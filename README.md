@@ -17,3 +17,13 @@ python3 mock_server.py
 ```bash
 curl "http://127.0.0.1:7755/api/v2/tasks?page=0&limit=50"
 ```
+# TaskBoard
+## Запуск локально
+1. Бэк:
+   ```bash
+   python3 mock_server.py 7755
+Фронт:
+```bash
+ng build
+```
+Открыть http://localhost:4200
