@@ -22,6 +22,7 @@ import sys
 import time
 import threading
 import math
+import mimetypes
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlsplit, parse_qs, unquote
@@ -49,12 +50,28 @@ from normalization import (
     FILTER_FIELDS,
     DUE_SOON_DEFAULT_DAYS, UNKNOWN,
 )
-from Тестовое.metrics import METRICS
+
+from metrics import METRICS
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 7755
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-BURST_CAP = 15
+STATIC_DIR = os.path.join(HERE, "static")
+
+MIME_OVERRIDES = {
+    ".js": "application/javascript",
+    ".mjs": "application/javascript",
+    ".css": "text/css",
+    ".html": "text/html; charset=utf-8",
+    ".json": "application/json",
+    ".ico": "image/x-icon",
+    ".svg": "image/svg+xml",
+    ".woff2": "font/woff2",
+    ".woff": "font/woff",
+    ".ttf": "font/ttf",
+}
+
+BURST_CAP = 30
 RATE_WINDOW = 1.0
 DEFAULT_PAGE_SIZE = 25
 MAX_PAGE_SIZE = 200
@@ -153,14 +170,15 @@ def _normalized_tasks():
     users_meta = _users_meta()
     projects_idx = _projects_index()
     comments_idx = _comments_by_task()
+
     result = []
     for t in raw_tasks:
         dto = normalize_task(t, users_idx, projects_idx, comments_idx, users_meta)
-    for f in ("status", "priority", "project", "assignee",
-              "estimate", "created", "due"):
-        if dto.get(f) == UNKNOWN:
-            METRICS.inc("normalization_errors_total", {"field": f})
-    result.append(dto)
+        for f in ("status", "priority", "project", "assignee",
+                  "estimate", "created", "due"):
+            if dto.get(f) == UNKNOWN:
+                METRICS.inc("normalization_errors_total", {"field": f})
+        result.append(dto)
     return result, users_idx, projects_idx
 
 
@@ -402,7 +420,6 @@ class Handler(BaseHTTPRequestHandler):
 
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
 
-        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         self.send_response(code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
@@ -411,6 +428,28 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         if self.command != "HEAD":
             self.wfile.write(body)
+
+    def _serve_static(self, route):
+        rel = "index.html" if route in ("/", "") else route.lstrip("/")
+        if rel.startswith("static/"):
+            rel = rel[len("static/"):]
+        path = os.path.normpath(os.path.join(STATIC_DIR, rel))
+        if not path.startswith(STATIC_DIR + os.sep):
+            return False
+        if not os.path.isfile(path):
+            return False
+        ext = os.path.splitext(path)[1].lower()
+        ctype = MIME_OVERRIDES.get(ext) or mimetypes.guess_type(path)[0] \
+                or "application/octet-stream"
+        with open(path, "rb") as f:
+            body = f.read()
+        self.send_response(200)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        if self.command != "HEAD":
+            self.wfile.write(body)
+        return True
 
     def _route_label(self, route):
         if route.startswith("/api/v2/tasks/") and route.endswith("/comments"):
@@ -505,6 +544,8 @@ class Handler(BaseHTTPRequestHandler):
         if route == "/api/v2/search":
             self._send(200, {"results": []})
             return
+        if self._serve_static(route):
+            return
 
         self._send(404, {"error": "unknown_route", "route": route})
 
@@ -572,5 +613,4 @@ class Server(ThreadingHTTPServer):
 
 if __name__ == "__main__":
     log.info("server_starting", port=PORT, burst_cap=BURST_CAP)
-    print(f"mock API listening on :{PORT} (burst cap ~{BURST_CAP}/rps)")
     Server(("127.0.0.1", PORT), Handler).serve_forever()
