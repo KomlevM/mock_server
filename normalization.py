@@ -851,6 +851,11 @@ def normalize_task(raw, users_index=None, projects_index=None,
     s_id = status_id(status)
     p_id = priority_id(priority)
 
+    # Для отображения исходных грязных данных
+    raw_comments = _comments_for_task(raw, comments_by_task)
+    all_data = raw
+    all_data["comments_raw"] = raw_comments
+
     # id проекта/исполнителя из справочников (для фронта)
     project_id_int = UNKNOWN_ID
     if project is not None:
@@ -904,7 +909,7 @@ def normalize_task(raw, users_index=None, projects_index=None,
         "comments": _normalize_comments(
             _comments_for_task(raw, comments_by_task), users_index, users_meta,
         ),
-        "all_data": raw,
+        "all_data": all_data,
     }
     task["is_due_date_error"] = _is_due_date_error(task)
     return task

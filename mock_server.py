@@ -26,6 +26,7 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlsplit, parse_qs, unquote
 from logger import get_logger
+
 log = get_logger("mock_server")
 
 from normalization import (
@@ -154,16 +155,12 @@ def _normalized_tasks():
     comments_idx = _comments_by_task()
     result = []
     for t in raw_tasks:
-        try:
-            dto = normalize_task(t, users_idx, projects_idx, comments_idx, users_meta)
-        except Exception as e:
-            log.error("normalize_failed", task_id=t.get("id"), error=str(e))
-            continue
-        for f in ("status", "priority", "project", "assignee",
-                  "estimate", "created", "due"):
-            if dto.get(f) == UNKNOWN:
-                METRICS.inc("normalization_errors_total", {"field": f})
-        result.append(dto)
+        dto = normalize_task(t, users_idx, projects_idx, comments_idx, users_meta)
+    for f in ("status", "priority", "project", "assignee",
+              "estimate", "created", "due"):
+        if dto.get(f) == UNKNOWN:
+            METRICS.inc("normalization_errors_total", {"field": f})
+    result.append(dto)
     return result, users_idx, projects_idx
 
 
@@ -334,6 +331,7 @@ def _pulse():
 
 def _health():
     return {"status": "ok", "token": HEARTBEAT}
+
 
 # def _send(self, code, payload):
 #     elapsed = time.monotonic() - getattr(self, "_t_start", time.monotonic())
