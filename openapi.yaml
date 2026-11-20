@@ -1,0 +1,195 @@
+openapi: 3.0.3
+info:
+  title: TaskBoard API
+  version: 2.0.0
+servers:
+  - url: http://0.0.0.0:7755/api/v2
+paths:
+  /tasks:
+    get:
+      summary: Список задач
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: sort
+          in: query
+          schema:
+            type: string
+            default: -created
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Task'
+                  meta:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      per_page:
+                        type: integer
+                      total:
+                        type: integer
+  /tasks/{id}:
+    get:
+      summary: Карточка задачи
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Детали задачи
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+  /tasks/{id}/comments:
+    get:
+      summary: Комментарии к задаче
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Список комментариев
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Comment'
+                  meta:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      per_page:
+                        type: integer
+                      total:
+                        type: integer
+  /tasks/{id}/status:
+    post:
+      summary: Смена статуса
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+      responses:
+        '200':
+          description: Задача обновлена
+  /search:
+    get:
+      summary: Поиск
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Результаты поиска
+  /users:
+    get:
+      summary: Список пользователей
+      responses:
+        '200':
+          description: Список пользователей
+  /projects:
+    get:
+      summary: Список проектов
+      responses:
+        '200':
+          description: Список проектов
+  /health:
+    get:
+      summary: Проверка живости
+      responses:
+        '200':
+          description: Сервис жив
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  token:
+                    type: string
+components:
+  schemas:
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+          enum: [todo, doing, done]
+        priority:
+          type: integer
+        assignee_id:
+          type: integer
+          nullable: true
+        project_id:
+          type: integer
+        deadline:
+          type: string
+          format: date
+        created_at:
+          type: integer
+        updated_at:
+          type: integer
+        description:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+    Comment:
+      type: object
+      properties:
+        id:
+          type: integer
+        task_id:
+          type: integer
+        author:
+          type: string
+        created_at:
+          type: integer
+        text:
+          type: string

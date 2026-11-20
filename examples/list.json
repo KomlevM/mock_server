@@ -1,0 +1,61 @@
+{
+  "data": [
+    {
+      "id": "9f2c1b4e-7a55-4f0a-9d3e-1b2c3d4e5f60",
+      "title": "На проде снова 502 после выкладки биллинга, лог пустой",
+      "status": "todo",
+      "priority": 2,
+      "assignee_id": 19,
+      "project_id": 5,
+      "deadline": "2026-11-20",
+      "created_at": 1760794620,
+      "updated_at": 1760794620,
+      "description": "В проде с 2025-09-18.",
+      "tags": ["billing", "prod"]
+    },
+    {
+      "id": "3a7d5e91-2c44-4b18-9f60-7e8d9c0b1a25",
+      "title": "Перенести релиз мобилки на конец спринта",
+      "status": "doing",
+      "priority": 3,
+      "assignee_id": 12,
+      "project_id": 3,
+      "deadline": "2026-11-18",
+      "created_at": 1760801100,
+      "updated_at": 1760812200,
+      "description": "Перенос из-за правок в биллинге.",
+      "tags": ["mobile", "release"]
+    },
+    {
+      "id": "c48f2b06-5e91-4a73-b0d2-6f1e8c4a9b37",
+      "title": "Обновить документацию по API для партнёров",
+      "status": "done",
+      "priority": 1,
+      "assignee_id": null,
+      "project_id": 4,
+      "deadline": null,
+      "created_at": 1760714400,
+      "updated_at": 1760900800,
+      "description": "",
+      "tags": ["docs"]
+    },
+    {
+      "id": "6b9e1f34-8c07-4d52-a3b6-0e2f5a7c1d48",
+      "title": "Уточнить формулировку в \"подписке\" на лендинге",
+      "status": "todo",
+      "priority": 2,
+      "assignee_id": 14,
+      "project_id": 6,
+      "deadline": "2026-11-25",
+      "created_at": 1760558400,
+      "updated_at": 1760558400,
+      "description": "Маркетинг просит формулировку покороче.",
+      "tags": ["landing", "copy"]
+    }
+  ],
+  "meta": {
+    "page": 0,
+    "per_page": 50,
+    "total": 546
+  }
+}
