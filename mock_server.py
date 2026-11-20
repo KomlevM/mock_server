@@ -53,7 +53,7 @@ from Тестовое.metrics import METRICS
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 7755
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-BURST_CAP = 6
+BURST_CAP = 15
 RATE_WINDOW = 1.0
 DEFAULT_PAGE_SIZE = 25
 MAX_PAGE_SIZE = 200
