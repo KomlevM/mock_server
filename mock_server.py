@@ -25,7 +25,8 @@ import math
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlsplit, parse_qs, unquote
-from metrics import METRICS
+from logger import get_logger
+log = get_logger("mock_server")
 
 from normalization import (
     normalize_task,
@@ -153,7 +154,11 @@ def _normalized_tasks():
     comments_idx = _comments_by_task()
     result = []
     for t in raw_tasks:
-        dto = normalize_task(t, users_idx, projects_idx, comments_idx, users_meta)
+        try:
+            dto = normalize_task(t, users_idx, projects_idx, comments_idx, users_meta)
+        except Exception as e:
+            log.error("normalize_failed", task_id=t.get("id"), error=str(e))
+            continue
         for f in ("status", "priority", "project", "assignee",
                   "estimate", "created", "due"):
             if dto.get(f) == UNKNOWN:
@@ -330,25 +335,25 @@ def _pulse():
 def _health():
     return {"status": "ok", "token": HEARTBEAT}
 
-def _send(self, code, payload):
-    elapsed = time.monotonic() - getattr(self, "_t_start", time.monotonic())
-    route = getattr(self, "_route_name", "unknown")
-    METRICS.inc("http_requests_total",
-                {"method": self.command, "route": route, "status": code})
-    if code >= 400:
-        METRICS.inc("http_errors_total",
-                    {"route": route, "status_class": f"{code // 100}xx"})
-    METRICS.observe("http_request_duration_seconds", elapsed, {"route": route})
-
-    body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-    self.send_response(code)
-    self.send_header("Content-Type", "application/json; charset=utf-8")
-    self.send_header("Content-Length", str(len(body)))
-    self.send_header("X-RateLimit-Limit", str(BURST_CAP))
-    self.send_header("X-RateLimit-Remaining", str(self._remaining()))
-    self.end_headers()
-    if self.command != "HEAD":
-        self.wfile.write(body)
+# def _send(self, code, payload):
+#     elapsed = time.monotonic() - getattr(self, "_t_start", time.monotonic())
+#     route = getattr(self, "_route_name", "unknown")
+#     METRICS.inc("http_requests_total",
+#                 {"method": self.command, "route": route, "status": code})
+#     if code >= 400:
+#         METRICS.inc("http_errors_total",
+#                     {"route": route, "status_class": f"{code // 100}xx"})
+#     METRICS.observe("http_request_duration_seconds", elapsed, {"route": route})
+#
+#     body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+#     self.send_response(code)
+#     self.send_header("Content-Type", "application/json; charset=utf-8")
+#     self.send_header("Content-Length", str(len(body)))
+#     self.send_header("X-RateLimit-Limit", str(BURST_CAP))
+#     self.send_header("X-RateLimit-Remaining", str(self._remaining()))
+#     self.end_headers()
+#     if self.command != "HEAD":
+#         self.wfile.write(body)
 
 class Handler(BaseHTTPRequestHandler):
     server_version = "TaskBoardMock/0.7"
@@ -387,6 +392,17 @@ class Handler(BaseHTTPRequestHandler):
             METRICS.inc("http_errors_total",
                         {"route": route, "status_class": f"{code // 100}xx"})
         METRICS.observe("http_request_duration_seconds", elapsed, {"route": route})
+
+        duration_ms = round(elapsed * 1000, 1)
+        if code >= 500:
+            log.error("http_server_error", route=route, status=code, duration_ms=duration_ms)
+        elif code >= 400:
+            log.warning("http_client_error", route=route, status=code, duration_ms=duration_ms)
+        elif elapsed > 0.5:
+            log.warning("slow_request", route=route, status=code, duration_ms=duration_ms)
+        # 200 без медленности не логируем — для этого метрики
+
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
 
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         self.send_response(code)
@@ -557,5 +573,6 @@ class Server(ThreadingHTTPServer):
 
 
 if __name__ == "__main__":
+    log.info("server_starting", port=PORT, burst_cap=BURST_CAP)
     print(f"mock API listening on :{PORT} (burst cap ~{BURST_CAP}/rps)")
     Server(("127.0.0.1", PORT), Handler).serve_forever()
