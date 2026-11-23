@@ -481,6 +481,8 @@ def _normalize_estimate_or_unknown(value):
         return None
     if isinstance(value, str) and not value.strip():
         return None
+    if value == "?":
+        return None
     est = normalize_estimate(value)
     return est if est is not None else UNKNOWN
 
@@ -829,7 +831,7 @@ def _comments_for_task(raw, comments_by_task):
 
 
 def normalize_task(raw, users_index=None, projects_index=None,
-                   comments_by_task=None, users_meta=None):
+                   comments_by_task=None, users_meta=None, now = datetime.now(timezone.utc)):
     if not isinstance(raw, dict):
         raw = {}
     users_index = users_index or {}
@@ -912,6 +914,7 @@ def normalize_task(raw, users_index=None, projects_index=None,
         "all_data": all_data,
     }
     task["is_due_date_error"] = _is_due_date_error(task)
+    task["is_overdue"] = _is_overdue(task, now)
     return task
 
 
